@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Z2_polishWordsKt" type="JetRunConfigurationType" nameIsGenerated="true">
+    <module name="si.main" />
+    <option name="VM_PARAMETERS" value="" />
+    <option name="PROGRAM_PARAMETERS" value="src/main/resources/w1/words_for_ai1.txt src/main/resources/w1/pan_tadeusz_bez_spacji.txt src/main/resources/w1/tadeusz_out.txt" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
+    <option name="ALTERNATIVE_JRE_PATH" />
+    <option name="PASS_PARENT_ENVS" value="true" />
+    <option name="MAIN_CLASS_NAME" value="me.tooster.w1.Z2_polishWordsKt" />
+    <option name="WORKING_DIRECTORY" value="" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

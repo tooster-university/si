@@ -9,15 +9,15 @@ import java.io.File
 // IDEA 2 (slightly slower): keep words in hashmap, if substring is a word save it as potential split point. Keep
 // track of split points. Afterwards check best split. Approx. avg num of words per line should be around 5-10
 
-const val RESOURCE_PREFIX = "src/main/resources/w1/";
+//const val RESOURCE_PREFIX = "src/main/resources/w1/";
 
 // optional args: <words file> <input file> <output file>
 fun main(args: Array<String>) {
 
 
-    val wordsPath = RESOURCE_PREFIX + args.getOrElse(0) { "polish_words.txt" }
-    val inputPath = RESOURCE_PREFIX + args.getOrElse(1) { "zad2_input.txt" }
-    val outputPath = RESOURCE_PREFIX + args.getOrElse(2) { "zad2_output.txt" }
+    val wordsPath = args.getOrElse(0) { "polish_words.txt" }
+    val inputPath = args.getOrElse(1) { "zad2_input.txt" }
+    val outputPath = args.getOrElse(2) { "zad2_output.txt" }
 
     val words = File(wordsPath).bufferedReader().useLines { it.toHashSet() }
 

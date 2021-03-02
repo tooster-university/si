@@ -1,23 +1,30 @@
+@file:JvmName("Z2")
+
 package me.tooster.w1
 
 import java.io.File
 
 // IDEA 1 (too bothersome): write trie with node visitor, traverse text for each letter read constructing prefix, check
-// if word is full, keep track of 3 node visitors - whenever whole word is found, check consult with other visitors if the split
-// has a meaning
+// if word is full, keep track of several node visitors - whenever whole word is found, check consult with other
+// visitors if the split is meaningful. General observation - words are rarely longer than ~15 letters
 
 // IDEA 2 (slightly slower): keep words in hashmap, if substring is a word save it as potential split point. Keep
 // track of split points. Afterwards check best split. Approx. avg num of words per line should be around 5-10
+// ^ this turned out to suck ass, potential split lists grew very big
+
+// IDEA 3 (hashmap for words + DP for splits): best split ending at some point i will extend some best splits
+// j < i whenever substring [j..i] is a word in hashmap.
 
 //const val RESOURCE_PREFIX = "src/main/resources/w1/";
 
-// optional args: <words file> <input file> <output file>
+// optional args: words:<words file> in:<input file> out:<output file>
 fun main(args: Array<String>) {
 
+    val opts = args.associate { with(it.split(':')) { this[0] to this[1] } }
 
-    val wordsPath = args.getOrElse(0) { "polish_words.txt" }
-    val inputPath = args.getOrElse(1) { "zad2_input.txt" }
-    val outputPath = args.getOrElse(2) { "zad2_output.txt" }
+    val wordsPath = opts.getOrElse("words") { "words_for_ai1.txt" }
+    val inputPath = opts.getOrElse("in") { "zad2_input.txt" }
+    val outputPath = opts.getOrElse("out") { "zad2_output.txt" }
 
     val words = File(wordsPath).bufferedReader().useLines { it.toHashSet() }
 

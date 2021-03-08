@@ -68,34 +68,30 @@ fun experiment(drop: Int) {
 }
 
 fun propose() {
-    val decks = 1000
-    val sims = 1000
+    val sims = 100000
+    val excludeOrder = mutableListOf<Int>()
+    (0..3).forEach { i -> (0..9).forEach { j -> excludeOrder += i*9+j } }
 
-
-    for (size in 5..15) {
+    for (size in 10..30) {
         var bestExclude: List<Int> = emptyList()
         var bestScore = 0.0
-        repeat(decks) {
-            val exclude = (0 until 4 * 9).shuffled().drop(size)
-            var loWins = 0
-            repeat(sims) {
-                val (loHand, hiHand) = randomHand(true, exclude) to randomHand(false)
-                val (loScore, hiScore) = loHand.score() to hiHand.score()
-                if (loScore > hiScore) ++loWins
-            }
-            if (loWins.toDouble() / sims > bestScore) {
-                bestExclude = exclude
-                bestScore = loWins.toDouble() / sims
-            }
+        val exclude = excludeOrder.dropLast(size)
+        var loWins = 0
+        repeat(sims) {
+            val (loHand, hiHand) = randomHand(true, exclude) to randomHand(false)
+            val (loScore, hiScore) = loHand.score() to hiHand.score()
+            if (loScore > hiScore) ++loWins
+        }
+        if (loWins.toDouble() / sims > bestScore) {
+            bestExclude = exclude
+            bestScore = loWins.toDouble() / sims
         }
         System.out.println("Best statictical win for size $size: $bestScore while excluding: $bestExclude")
     }
 }
 
 fun main(args: Array<String>) {
-    (0..20).forEach {
-        experiment(drop = it)
-    }
+    (0..20).forEach(::experiment)
 
     propose()
 }

@@ -14,113 +14,127 @@ typealias Cords = Pair<Int, Int>
 
 fun parseCords(str: String): Cords = "abcdefgh".indexOf(str[0]) to str.substring(1).toInt() - 1
 fun Cords.toChessString(): String = "${"abcdefgh"[first]}${second + 1}"
-fun Cords.dFirst(offset: Int): Cords = first + offset to second
-fun Cords.dSecond(offset: Int): Cords = first to second + offset
 
-fun Cords.chebyshevDistance(other: Cords): Int = max(abs(first - other.first), abs(second - other.second))
+private fun Cords.chebyshevDistance(other: Cords): Int = max(abs(first - other.first), abs(second - other.second))
+private operator fun Pair<Int, Int>.plus(dc: Pair<Int, Int>): Cords {
+    return Cords(first + dc.first, second + dc.second)
+}
+
+private fun Cords.idx() = first * 8 + second
 
 enum class Piece { WHITE_ROOK, WHITE_KING, BLACK_KING }
+data class Move(val piece: Piece, val cords: Cords, val previousMove: Move?)
 
-data class Move(val piece: Piece, val cords: Cords)
+class GameState(val pieces: EnumMap<Piece, Cords>, val whiteMove: Boolean, val lastMove: Move?) {
 
-class GameState(val pieces: EnumMap<Piece, Cords>, val whiteMove: Boolean, val moves: List<Move>) {
+    private fun nextState(piece: Piece, newCords: Cords) = GameState(
+        pieces.clone().apply { put(piece, newCords) },
+        !whiteMove,
+        Move(piece, newCords, lastMove)
+    )
 
-    fun getRookMoves(): Sequence<Move> {
-        return sequence {
-            val rookPos = pieces[WHITE_ROOK]!!
-            var (dMinusF, dPlusF) = rookPos.copy().dFirst(-1) to rookPos.copy().dFirst(+1)
-            var (dMinusS, dPlusS) = rookPos.copy().dSecond(-1) to rookPos.copy().dSecond(+1)
-            while (dMinusF.first >= 0 && dMinusF !in pieces.values) {
-                yield(Move(WHITE_ROOK, dMinusF))
-                dMinusF = dMinusF.dFirst(-1)
-            }
-            while (dPlusF.first < 8 && dPlusF !in pieces.values) {
-                yield(Move(WHITE_ROOK, dPlusF))
-                dPlusF = dPlusF.dFirst(1)
-            }
-            while (dMinusS.second >= 0 && dMinusS !in pieces.values) {
-                yield(Move(WHITE_ROOK, dMinusS))
-                dMinusS = dMinusS.dSecond(-1)
-            }
-            while (dPlusS.second < 8 && dPlusS !in pieces.values) {
-                yield(Move(WHITE_ROOK, dPlusS))
-                dPlusS = dPlusS.dSecond(1)
+    companion object {
+        val rays = listOf(Cords(-1, 0), Cords(+1, 0), Cords(0, -1), Cords(0, +1))
+    }
+
+    fun getRookMoves() = sequence {
+        for (dc in rays) {
+            var nextRookPos = pieces[WHITE_ROOK]!! + dc
+
+            while (
+                nextRookPos.first in 0..7 && nextRookPos.second in 0..7 && // bounds check
+                !pieces.containsValue(nextRookPos) && ( // won't overlap on figure
+                        nextRookPos.chebyshevDistance(pieces[BLACK_KING]!!) > 1 || // is far from king
+                        nextRookPos.chebyshevDistance(pieces[WHITE_KING]!!) == 1   //  or is covered by our king
+                                                      )
+            ) {
+                yield(nextState(WHITE_ROOK, nextRookPos))
+                nextRookPos += dc
             }
         }
-            .filter { it.cords !in pieces.values } // don't attack
-            .filter { // only allow standing next to opposing king if the position is covered by our king
-                it.cords.chebyshevDistance(pieces[BLACK_KING]!!) > 1 ||
-                        it.cords.chebyshevDistance(pieces[WHITE_KING]!!) == 1
-            }
     }
 
-    fun isPositionThreatenedByWhiteRook(pos: Cords): Boolean {
-        val rookPos = pieces[WHITE_ROOK]!!
-        val wKingPos = pieces[WHITE_KING]!!
-        // check white king shielding raycast
-        return (pos.first == rookPos.first &&
-                wKingPos.first !in min(pos.first, rookPos.first)..max(pos.first, rookPos.first) ||
-                pos.second == rookPos.second &&
-                wKingPos.second !in min(pos.second, rookPos.second)..max(pos.second, rookPos.second))
-    }
-
-    fun getKingMoves(movingKing: Piece): Sequence<Move> {
-        val (moving, other) = if (movingKing == WHITE_KING) WHITE_KING to BLACK_KING else BLACK_KING to WHITE_KING
-        val (movingPos, otherPos) = pieces[moving]!! to pieces[other]!!
-        val rookPos = pieces[WHITE_ROOK]!!
-        val rookMoves = getRookMoves().toList()
-
-        return sequence {
-            (max(0, movingPos.first - 1)..min(7, movingPos.first + 1)).forEach { f ->
-                (max(0, movingPos.second - 1)..min(7, movingPos.second + 1)).forEach { s ->
-                    yield(Move(moving, f to s))
-                }
-            }
+    // returns ALL possible king moves - including attacks on white rook
+    fun getKingMoves(king: Piece) = sequence {
+        val opposingKing = if (king == WHITE_KING) BLACK_KING else WHITE_KING
+        for (dr in -1..1) for (dc in -1..1) {
+            val nextKingPos = pieces[king]!! + (dr to dc)
+            if (dr == 0 && dc == 0 || // no move
+                nextKingPos.first !in 0..7 || nextKingPos.second !in 0..7 || // out of board
+                nextKingPos.chebyshevDistance(pieces[opposingKing]!!) < 2 || // to close to other king
+                (king == BLACK_KING && isInRooksRay(nextKingPos))
+            )
+                continue
+            yield(nextState(king, nextKingPos))
         }
-            .filter { it.cords !in pieces.values } // exclude move onto self position
-            .filter { it.cords.chebyshevDistance(otherPos) > 1 } // kings minimum distance
-//            .filterNot { !whiteMove && rookMoves.contains(it) } // black can't enter white rooks hit path
-            .filterNot { !whiteMove && isPositionThreatenedByWhiteRook(it.cords) }
     }
 
-    fun getMoves(): Sequence<Move> = sequence {
+    // assumes valid position and returns true if white rook chec
+    fun isInRooksRay(B: Cords): Boolean { // black
+        val W = pieces[WHITE_KING]!!      // white
+        val R = pieces[WHITE_ROOK]!!      // rook
+        return B != R && ( // attacking rook is OK
+                B.first == R.first && ( // same column as rook and no white king in between
+                        W.first != B.first || W.first !in min(B.first, W.first)..max(B.first, W.first)) ||
+                B.second == R.second && ( // same for rows
+                        W.second != B.second || W.second !in min(B.second, W.second)..max(B.second, W.second))
+                         )
+    }
+
+    // should generate list of valid states
+    fun getNextStates(): Sequence<GameState> = sequence {
         if (whiteMove) {
             yieldAll(getKingMoves(WHITE_KING))
             yieldAll(getRookMoves())
         } else
-            yieldAll(getKingMoves(BLACK_KING))
+        // filter out moves that attack rook
+            yieldAll(getKingMoves(BLACK_KING).filterNot { it.pieces[BLACK_KING] == it.pieces[WHITE_ROOK] })
     }
 
+    // we need here all possible king moves - including attacks on rook
     fun isCheckmate(): Boolean = getKingMoves(BLACK_KING).count() == 0 &&
-            isPositionThreatenedByWhiteRook(pieces[BLACK_KING]!!)
+                                 isInRooksRay(pieces[BLACK_KING]!!)
 
-    // returns new state after move
-    fun performMove(move: Move): GameState {
-        val newBoard = pieces.clone()
-        newBoard[move.piece] = move.cords
-        return GameState(newBoard, !whiteMove, moves + move)
+    override fun toString() = "B:${pieces[BLACK_KING]!!.toChessString()} W:${pieces[WHITE_KING]!!.toChessString()} " +
+                              "R:${pieces[WHITE_ROOK]!!.toChessString()}"
+
+    fun moves(): List<Move> = generateSequence(lastMove) { it.previousMove }.toList().asReversed()
+
+    override fun hashCode(): Int {
+        val B = pieces[BLACK_KING]!!
+        val W = pieces[WHITE_KING]!!
+        val R = pieces[WHITE_ROOK]!!
+
+        return (B.idx() shl 0) + (W.idx() shl 6) + (R.idx() shl 12) + (if (whiteMove) 1 shl 28 else 0)
     }
 }
 
-fun BFS(initialState: GameState): Int {
-    val queue = LinkedList<Pair<GameState, Int>>()
-    val visitedStates = HashSet<GameState>()
-    queue.add(initialState to 0)
+fun BFS(initialState: GameState): GameState {
+    if (initialState.isCheckmate())
+        return initialState
+
+    val queue = LinkedList<GameState>()
+    val visitedStates = HashSet<Int>()
+
+    queue.add(initialState)
+
     while (true) {
-        val (state, depth) = queue.remove()
-        val moves = state.getMoves()
-        System.err.print(depth)
-        for (move in moves) {
-            val nextState = state.performMove(move)
+        val state = queue.remove()
+//        System.err.print(depth)
+//        try {
+        for (nextState in state.getNextStates()) {
             if (nextState.isCheckmate())
-                return depth + 1
-            else if (nextState !in visitedStates) {
-                visitedStates.add(nextState)
-                queue.add(nextState to depth + 1)
+                return nextState
+            else if (nextState.hashCode() !in visitedStates) {
+                visitedStates.add(nextState.hashCode())
+                queue.add(nextState)
             }
         }
-    }
 
+//        } catch (e: OutOfMemoryError) {
+//            println("queue: ${queue.size} depth: ${state.moves().size}");
+//        }
+    }
 }
 
 fun main(args: Array<String>) {
@@ -143,11 +157,16 @@ fun main(args: Array<String>) {
                             BLACK_KING to parseCords(l[3]),
                         )
                     ), l[0] == "white",
-                    emptyList()
+                    null
                 )
 
-                output.println(BFS(initialState))
+                val checkState = BFS(initialState)
+                val moves = checkState.moves()
 
+                output.println(moves.size)
+                if (opts.contains("moves")) {
+                    moves.forEach(::println)
+                }
             }
         }
     }

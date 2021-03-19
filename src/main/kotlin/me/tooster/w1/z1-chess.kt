@@ -84,7 +84,7 @@ class GameState(val pieces: EnumMap<Piece, Cords>, val whiteMove: Boolean, val l
     // should generate list of valid states
     fun getNextStates(): Sequence<GameState> = sequence {
         if (whiteMove) {
-            yieldAll(getKingMoves(WHITE_KING))
+            yieldAll(getKingMoves(WHITE_KING).filterNot { it.pieces[WHITE_KING] == it.pieces[WHITE_ROOK] })
             yieldAll(getRookMoves())
         } else
         // filter out moves that attack rook

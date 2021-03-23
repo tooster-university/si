@@ -2,15 +2,15 @@
 
 package me.tooster.w1
 
-data class Card(val color: Int, val figure: Int)
+private data class Card(val color: Int, val figure: Int)
 
-fun randomHand(low: Boolean, exclude: List<Int> = emptyList()): List<Card> {
+private fun randomHand(low: Boolean, exclude: List<Int> = emptyList()): List<Card> {
     val cards = if (low) 9 else 4
     val colors = 4
     return (0 until cards * colors).filter { it !in exclude }.shuffled().take(5).map { Card(it / cards, it % cards) }
 }
 
-fun List<Card>.score(): Int {
+private fun List<Card>.score(): Int {
 
     // high card (default)
     var highscore = 1
@@ -55,7 +55,7 @@ fun List<Card>.score(): Int {
     return highscore
 }
 
-fun experiment(drop: Int) {
+private fun experiment(drop: Int) {
     var loWins = 0
     val reps = 100000
     val exclude = (0 until 4 * 9).shuffled().take(drop)
@@ -67,7 +67,7 @@ fun experiment(drop: Int) {
     System.out.println("dropping $drop - win to plays ratio: ${loWins.toDouble() / reps}.")
 }
 
-fun propose() {
+private fun propose() {
     val sims = 100000
     val excludeOrder = mutableListOf<Int>()
     (0..3).forEach { i -> (0..9).forEach { j -> excludeOrder += i*9+j } }
@@ -90,7 +90,7 @@ fun propose() {
     }
 }
 
-fun main(args: Array<String>) {
+private fun main(args: Array<String>) {
     (0..20).forEach(::experiment)
 
     propose()

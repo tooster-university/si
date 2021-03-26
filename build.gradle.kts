@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "me.tooster"
-version = "w1z5"
+version = "w2z1"
 
 repositories {
     mavenCentral()
@@ -27,7 +27,7 @@ tasks.withType<KotlinCompile> {
 
 tasks.jar {
     manifest {
-        attributes["Main-Class"] = "me.tooster.w1.Z5"
+        attributes["Main-Class"] = "me.tooster.w2.Z1"
     }
     configurations["compileClasspath"].forEach { file: File ->
         from(zipTree(file.absoluteFile))

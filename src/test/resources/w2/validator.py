@@ -1147,7 +1147,7 @@ zad5:
       timeout: 200
 '''
 )
-DEFAULT_TESTSET = yaml.load(DEFAULT_TESTSET_YAML)
+DEFAULT_TESTSET = yaml.load(DEFAULT_TESTSET_YAML, Loader=yaml.FullLoader)
 
 
 # Custom comparison functions
@@ -1640,7 +1640,7 @@ if __name__ == '__main__':
 
     if args.testset:
         with open(args.testset) as testset_f:
-            testset = yaml.load(testset_f)
+            testset = yaml.load(testset_f, Loader=yaml.FullLoader)
     else:
         testset = DEFAULT_TESTSET
     if args.problem not in testset:

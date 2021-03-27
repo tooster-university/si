@@ -30,6 +30,7 @@ class RegularNonogram(rows: List<Desc>, cols: List<Desc>) : Nonogram<Desc>(rows,
     }
 
 
+    // FIXME: generating all shifts is a lil bit trickier
     private fun generateCandidates(D: Desc): List<RowT> {
         val offsets = D.blocks.scan(0) { start, d -> start + d + 1 }.dropLast(1).toMutableList()
         val candidates = mutableListOf<RowT>()

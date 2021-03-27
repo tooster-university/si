@@ -1,92 +1,155 @@
 @file:JvmName("Z1")
+@file:Suppress("DuplicatedCode")
 
 package me.tooster.w2
 
-import me.tooster.common.Nonogram
 import me.tooster.common.cartesianProduct
 import me.tooster.common.opts
-import me.tooster.w2.RegularNonogram.Desc
+import me.tooster.w2.RegularNonogramV2.AXIS.COLS
+import me.tooster.w2.RegularNonogramV2.AXIS.ROWS
+import me.tooster.w2.RegularNonogramV2.Desc
 import java.io.File
 import java.io.FileReader
+import java.lang.Integer.max
 import java.util.*
 import kotlin.collections.HashMap
+import kotlin.random.Random
+import kotlin.random.nextInt
 import kotlin.system.measureTimeMillis
 
 typealias RowT = List<Boolean>
 
-class RegularNonogram(rows: List<Desc>, cols: List<Desc>) : Nonogram<Desc>(rows, cols) {
+/**
+ * Options:
+ *  debugPreprocess - to show preprocessing table
+ *  debugRepeat     - to show restarting with randomized picture
+ *  reps:n          - to specify number of re-rolls
+ *  pixelFixes:n    - to specify maximum number of pixel fixes
+ *  p:f             - to specify probability of success
+ */
+class RegularNonogramV2(val rows: List<Desc>, val cols: List<Desc>) {
 
     data class Desc(val length: Int, val blocks: List<Int>)
 
-    private val descCandidates = HashMap<Desc, List<RowT>>() // <length, description> -> <candidates>
+    enum class AXIS { ROWS, COLS }
+
+    private val picture = EnumMap(mapOf(
+        ROWS to MutableList(rows.size) { 0 },
+        COLS to MutableList(cols.size) { 0 }
+    ))
+
+    private val descCandidates = HashMap<Desc, MutableList<Int>>()
 
     init {
         val preprocessing = measureTimeMillis {
-            val descs = (rows + cols).distinct()
-            descs.associateWithTo(descCandidates) { desc -> generateCandidates(desc).distinct() }
+            assignCandidates()
         }
-        System.err.println("preprocessing took $preprocessing ns. Max cand. size =${
+        System.err.println("{b--preprocessing took $preprocessing ns. Max cand. size =${
             descCandidates.values.maxOf { it.size }
-        }")
+        }--}")
+
+        if (opts.containsKey("debugPreprocess"))
+            println(descCandidates.entries.map { (k, vs) ->
+                k.toString() + "\n" + vs.map { "   " + it.toViewString() }.joinToString("\n")
+            }.joinToString("\n"))
     }
 
+    private fun assignCandidates() {
+        for (desc in rows + cols)
+            descCandidates[desc] = mutableListOf()
 
-    // FIXME: generating all shifts is a lil bit trickier
-    private fun generateCandidates(D: Desc): List<RowT> {
-        if (D.blocks.size == 1) {
-            val pad = List(D.length - D.blocks.last()) { false }
-            return (pad + List(D.blocks.last()) { true } + pad).windowed(D.length) // generates all shifts
-        } else {
-            val totalSpaceForLast = D.length - (D.blocks.sum() + D.blocks.size - 1) + D.blocks.last()
-            val candidates = mutableListOf<RowT>()
-            for (spaceForLast in D.blocks.last()..totalSpaceForLast) {
-                val ends = generateCandidates(Desc(
-                    spaceForLast,
-                    D.blocks.subList(D.blocks.lastIndex, D.blocks.size)))
-                val starts = generateCandidates(Desc(
-                    D.length - spaceForLast - 1,
-                    D.blocks.subList(0, D.blocks.lastIndex)))
-                (starts cartesianProduct ends).forEach {candidates.add(it.first + false + it.second)}
+        val blockToLen = (1..max(rows.size, cols.size)).associateBy { (1 shl it) - 1 }
+        for (mask in 0 until (1 shl max(rows.size, cols.size))) { // approx 32k for len. 15
+            val desc = mutableListOf<Int>()
+            var m = mask
+            do {
+                m = m ushr m.countTrailingZeroBits()
+                desc += (m.inv()).countTrailingZeroBits()
+                m = m ushr desc.last()
+            } while (m > 0)
+            val (d1, d2) = Desc(rows.size, desc) to Desc(cols.size, desc)
+            if (descCandidates.containsKey(d1))
+                descCandidates[d1]!! += mask
+            if (descCandidates.containsKey(d2) && rows.size != cols.size)
+                descCandidates[d2]!! += mask
+        }
+    }
+
+    private fun flipPixel(row: Int, col: Int) {
+        picture[ROWS]!![row] = picture[ROWS]!![row] xor (1 shl col)
+        picture[COLS]!![col] = picture[COLS]!![col] xor (1 shl row)
+    }
+
+    private infix fun Int.hamming(other: Int) = Integer.bitCount(this xor other)
+
+    private fun Int.flipsLeft(D: Desc): Int = descCandidates[D]!!.minOf { c -> this hamming c }
+
+    private fun randomize() {
+        for ((r, c) in rows.indices cartesianProduct cols.indices)
+            if (Random.nextDouble() < 0.5) flipPixel(r, c)
+    }
+
+    private fun isSolved() = rows.indices.all { picture[ROWS]!![it].flipsLeft(rows[it]) == 0 } &&
+                             cols.indices.all { picture[COLS]!![it].flipsLeft(cols[it]) == 0 }
+
+    private fun tryFixPixel(p: Double = 0.05) {
+
+        val rowsByMatching = rows.indices.groupBy { picture[ROWS]!![it].flipsLeft(rows[it]) == 0 }
+        val colsByMatching = cols.indices.groupBy { picture[COLS]!![it].flipsLeft(cols[it]) == 0 }
+
+        // suboptimal pixel fix
+        if (Random.nextDouble() < p) {
+            // totally random flip
+            flipPixel(Random.nextInt(rows.indices), Random.nextInt(cols.indices))
+        } else { // optimal pixel fix - choose the one that maximizes fit
+            // flip on random wrong column
+            val faultyRows = rowsByMatching[false]?.map { it to true } ?: emptyList()
+            val faultyCols = colsByMatching[false]?.map { it to false } ?: emptyList()
+
+            val candidates = faultyRows + faultyCols
+            val (mainIdx, isRow) = candidates.random()
+            val (mainAxis, crossAxis) = if (isRow) (ROWS to COLS) else (COLS to ROWS)
+            val (mainDesc, crossDesc) = if (isRow) (rows to cols) else (cols to rows)
+            val flip = { main: Int, cross: Int -> if (isRow) flipPixel(main, cross) else flipPixel(cross, main) }
+
+            // find best pixel to fix
+            val bestCross = picture[crossAxis]!!.indices.minByOrNull { crossIdx ->
+                flip(mainIdx, crossIdx)
+                // sum number of pixels left to flip
+                val match = picture[mainAxis]!![mainIdx].flipsLeft(mainDesc[mainIdx]) +
+                            picture[crossAxis]!![crossIdx].flipsLeft(crossDesc[crossIdx])
+                flip(mainIdx, crossIdx)
+                match
+            }!!
+            // flip best pixel
+            flip(mainIdx, bestCross)
+        }
+    }
+
+    fun trySolve(
+        restarts: Int = Integer.parseInt(opts.getOrDefault("reps", "1000")),
+        maxPixelFlips: Int = Integer.parseInt(opts.getOrDefault("pixelFixes", "1000")),
+        p: Double = (opts.getOrDefault("p", "0.05").toDouble()),
+    ):
+            RegularNonogramV2 {
+        repeat(restarts) {
+            randomize()
+            repeat(maxPixelFlips) {
+                if (isSolved()) return this
+                else tryFixPixel(p)
             }
-            return candidates
+            if (opts.containsKey("debugRepeat"))
+                System.err.println("Restarting after:\n$this")
         }
-        /*val offsets = D.blocks.scan(0) { start, d -> start + d + 1 }.dropLast(1).toMutableList()
-        val candidates = mutableListOf<RowT>()
-
-        fun List<Int>.offsetToColoring(): MutableList<Boolean> {
-            val colors = MutableList(D.length) { false }
-            for ((offset, d) in this.zip(D.blocks)) (offset until offset + d).forEach { colors[it] = true }
-            return colors
-        }
-
-        var hasShifted = true // flag to stop trying pushing segments back
-        while (hasShifted) {
-            hasShifted = false
-            candidates.add(offsets.offsetToColoring())
-            findPush@ for (idx in offsets.indices) { // try pushing first possible segment back - guarantees all
-                // generated
-                val end = if (idx == offsets.lastIndex) D.length else offsets[idx + 1] - 1
-                if (offsets[idx] + D.blocks[idx] < end) {
-                    ++offsets[idx]
-                    hasShifted = true
-                    break@findPush
-                }
-            }
-        }
-        return candidates*/
+        return this
     }
 
-    private fun RowT.hammingDistance(other: RowT): Int =
-        this.zip(other) { a, b -> a != b }.count { it }
+    fun Int.toViewString(): String = this.toString(2).padStart(cols.size, '0').reversed()
+        .replace('0', '.').replace('1', '#')
 
-    override fun RowT.flipsLeft(D: Desc): Int {
-        val candidates = descCandidates[D]
-        return candidates!!.minOf { c -> this.hammingDistance(c) }
-    }
+    override fun toString(): String = picture[ROWS]!!.joinToString("\n") { it.toViewString() }
 }
 
-private fun RowT.toRowString() = this.map { if (it) '#' else '.' }.joinToString("")
-private fun String.fromRowString() = this.map { it == '#' }.toList()
 
 fun main(args: Array<String>) {
     opts = args.associate { with(it.split(':')) { this[0] to this[1] } }
@@ -101,13 +164,13 @@ fun main(args: Array<String>) {
             val wsRegex = Regex("""\s+""")
 
             val (r, c) = input.nextLine().split(wsRegex).map { Integer.parseInt(it) }
-            val nonogram = RegularNonogram(
+            val nonogram = RegularNonogramV2(
                 (1..r).map { Desc(c, input.nextLine().split(wsRegex).map { Integer.parseInt(it) }) }.toList(),
                 (1..c).map { Desc(r, input.nextLine().split(wsRegex).map { Integer.parseInt(it) }) }.toList(),
             )
 
             val picture = nonogram.trySolve(maxPixelFlips = 50000, p = 0.01)
-            output.println(picture.map { it.toRowString() }.joinToString("\n"))
+            output.println(picture)
         }
     }
 }

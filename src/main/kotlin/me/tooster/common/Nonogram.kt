@@ -80,7 +80,7 @@ abstract class Nonogram<DescT>(val rows: List<DescT>, val cols: List<DescT>) {
                 else tryFixPixel(p)
             }
             if(opts.containsKey("debugRepeat"))
-                System.err.println(this)
+                System.err.println("Restarting after:\n$this")
         }
         return picture
     }

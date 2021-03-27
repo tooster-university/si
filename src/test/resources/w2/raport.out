@@ -1,0 +1,30 @@
+$ python validator.py zad1 java -jar ../../../../build/libs/si-w2z1.jar pixelFixes:10000 debugRepeats:
+Estimated computer speed= 0.8797170595375737
+{b--preprocessing took 1 ns. Max cand. size =3--}
+Running case 1... OK!
+{b--preprocessing took 4 ns. Max cand. size =35--}
+Running case 2... OK!
+{b--preprocessing took 5 ns. Max cand. size =36--}
+Running case 3... OK!
+{b--preprocessing took 6 ns. Max cand. size =36--}
+Running case 4... OK!
+{b--preprocessing took 5 ns. Max cand. size =21--}
+Running case 5... OK!
+{b--preprocessing took 5 ns. Max cand. size =36--}
+Running case 6... OK!
+{b--preprocessing took 26 ns. Max cand. size =165--}
+Running case 7... OK!
+{b--preprocessing took 37 ns. Max cand. size =495--}
+Running case 8... OK!
+{b--preprocessing took 37 ns. Max cand. size =126--}
+Running case 9... OK!
+{b--preprocessing took 56 ns. Max cand. size =495--}
+Running case 10... OK!
+{b--preprocessing took 57 ns. Max cand. size =462--}
+Running case 11... OK!
+{b--preprocessing took 38 ns. Max cand. size =126--}
+Running case 12... OK!
+
+Validation result: 12/12 cases pass.
+
+For passing cases total time: 35.114989280700684

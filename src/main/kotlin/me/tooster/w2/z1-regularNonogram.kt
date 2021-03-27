@@ -3,6 +3,7 @@
 package me.tooster.w2
 
 import me.tooster.common.Nonogram
+import me.tooster.common.cartesianProduct
 import me.tooster.common.opts
 import me.tooster.w2.RegularNonogram.Desc
 import java.io.File
@@ -22,7 +23,7 @@ class RegularNonogram(rows: List<Desc>, cols: List<Desc>) : Nonogram<Desc>(rows,
     init {
         val preprocessing = measureTimeMillis {
             val descs = (rows + cols).distinct()
-            descs.associateWithTo(descCandidates) { desc -> generateCandidates(desc) }
+            descs.associateWithTo(descCandidates) { desc -> generateCandidates(desc).distinct() }
         }
         System.err.println("preprocessing took $preprocessing ns. Max cand. size =${
             descCandidates.values.maxOf { it.size }
@@ -32,7 +33,24 @@ class RegularNonogram(rows: List<Desc>, cols: List<Desc>) : Nonogram<Desc>(rows,
 
     // FIXME: generating all shifts is a lil bit trickier
     private fun generateCandidates(D: Desc): List<RowT> {
-        val offsets = D.blocks.scan(0) { start, d -> start + d + 1 }.dropLast(1).toMutableList()
+        if (D.blocks.size == 1) {
+            val pad = List(D.length - D.blocks.last()) { false }
+            return (pad + List(D.blocks.last()) { true } + pad).windowed(D.length) // generates all shifts
+        } else {
+            val totalSpaceForLast = D.length - (D.blocks.sum() + D.blocks.size - 1) + D.blocks.last()
+            val candidates = mutableListOf<RowT>()
+            for (spaceForLast in D.blocks.last()..totalSpaceForLast) {
+                val ends = generateCandidates(Desc(
+                    spaceForLast,
+                    D.blocks.subList(D.blocks.lastIndex, D.blocks.size)))
+                val starts = generateCandidates(Desc(
+                    D.length - spaceForLast - 1,
+                    D.blocks.subList(0, D.blocks.lastIndex)))
+                (starts cartesianProduct ends).forEach {candidates.add(it.first + false + it.second)}
+            }
+            return candidates
+        }
+        /*val offsets = D.blocks.scan(0) { start, d -> start + d + 1 }.dropLast(1).toMutableList()
         val candidates = mutableListOf<RowT>()
 
         fun List<Int>.offsetToColoring(): MutableList<Boolean> {
@@ -55,7 +73,7 @@ class RegularNonogram(rows: List<Desc>, cols: List<Desc>) : Nonogram<Desc>(rows,
                 }
             }
         }
-        return candidates
+        return candidates*/
     }
 
     private fun RowT.hammingDistance(other: RowT): Int =

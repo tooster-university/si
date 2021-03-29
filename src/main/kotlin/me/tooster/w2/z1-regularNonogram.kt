@@ -21,11 +21,11 @@ typealias RowT = List<Boolean>
 
 /**
  * Options:
- *  debugPreprocess - to show preprocessing table
- *  debugRepeat     - to show restarting with randomized picture
- *  reps:n          - to specify number of re-rolls
- *  pixelFixes:n    - to specify maximum number of pixel fixes
- *  p:f             - to specify probability of success
+ *  - debugPreprocess - to show preprocessing table
+ *  - debugRepeat     - to show restarting with randomized picture
+ *  - reps:n          - to specify number of re-rolls
+ *  - pixelFixes:n    - to specify maximum number of pixel fixes
+ *  - p:f             - to specify probability of success
  */
 class RegularNonogramV2(val rows: List<Desc>, val cols: List<Desc>) {
 

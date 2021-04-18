@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "me.tooster"
-version = "w2z1"
+version = "w2z3"
 
 repositories {
     mavenCentral()
@@ -28,7 +28,7 @@ tasks.withType<KotlinCompile> {
 
 tasks.jar {
     manifest {
-        attributes["Main-Class"] = "me.tooster.w2.Z1"
+        attributes["Main-Class"] = "me.tooster.w2.Z3"
     }
     configurations["compileClasspath"].forEach { file: File ->
         from(zipTree(file.absoluteFile))
@@ -36,9 +36,9 @@ tasks.jar {
 
 }
 
-val solutions = File("src/main/kotlin/me/tooster").walk()
-    .mapNotNull { Regex(""".*(w\d+)/(z\d+).*\.kt""").matchEntire(it.path) }
 
+val solutions = File(projectDir,"src/main/kotlin/me/tooster").walk()
+    .mapNotNull { Regex(""".*(w\d+)/(z\d+).*\.kt""").matchEntire(it.path) }.toList()
 
 solutions.forEach {
     val (w, z) = it.groupValues[1] to it.groupValues[2]

@@ -1,14 +1,12 @@
 package me.tooster.common
 
-import me.tooster.common.Nonogram.AXIS.COLS
-import me.tooster.common.Nonogram.AXIS.ROWS
+import me.tooster.common.AXIS.COLS
+import me.tooster.common.AXIS.ROWS
 import kotlin.random.Random
 import kotlin.random.nextInt
 
 abstract class Nonogram<DescT>(val rows: List<DescT>, val cols: List<DescT>) {
     lateinit var picture: MutableList<MutableList<Boolean>>
-
-    enum class AXIS { ROWS, COLS }
 
     fun nextRandomRow() = MutableList(cols.size) { Random.nextBoolean() }
 

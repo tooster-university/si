@@ -5,8 +5,8 @@ package me.tooster.w2
 
 import me.tooster.common.cartesianProduct
 import me.tooster.common.opts
-import me.tooster.w2.RegularNonogramV2.AXIS.COLS
-import me.tooster.w2.RegularNonogramV2.AXIS.ROWS
+import me.tooster.common.AXIS.COLS
+import me.tooster.common.AXIS.ROWS
 import me.tooster.w2.RegularNonogramV2.Desc
 import java.io.File
 import java.io.FileReader
@@ -30,8 +30,6 @@ typealias RowT = List<Boolean>
 class RegularNonogramV2(val rows: List<Desc>, val cols: List<Desc>) {
 
     data class Desc(val length: Int, val blocks: List<Int>)
-
-    enum class AXIS { ROWS, COLS }
 
     private val picture = EnumMap(mapOf(
         ROWS to MutableList(rows.size) { 0 },

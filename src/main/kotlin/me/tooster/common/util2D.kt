@@ -1,0 +1,129 @@
+package me.tooster.common
+
+import me.tooster.common.AXIS.COLS
+import me.tooster.common.AXIS.ROWS
+import java.util.*
+import kotlin.math.abs
+
+// region AXIS
+enum class AXIS {
+    ROWS, COLS;
+}
+
+fun AXIS.other() = when (this) {
+    ROWS -> COLS
+    COLS -> ROWS
+}
+// endregion
+
+enum class Direction {
+
+    N, NE, E, SE, S, SW, W, NW;
+
+    companion object {
+        val values = values()
+        val cardinals = values.filter { it.cardinal }
+
+        val diagonals = values.filter { it.diagonal }
+
+        /** value from rose, where 0=N, 1=NE ... and other are relative to N */
+        fun getRose(index: Int) = values[Math.floorMod(index, values.size)]
+    }
+
+    val cardinal get() = this.ordinal % 2 == 0
+    val diagonal get() = !cardinal
+    infix fun orthogonalTo(other: Direction): Boolean = abs(this.ordinal - other.ordinal) == 2
+    fun rotated(cwOffset: Int) = getRose(this.ordinal + cwOffset)
+    val LEFT_FRONT get() = rotated(-1) // counter clockwise
+    val RIGHT_FRONT get() = rotated(+1) // clockwise
+    val LEFT get() = rotated(-2)
+    val RIGHT get() = rotated(+2)
+    val LEFT_BACK get() = rotated(-3)
+    val RIGHT_BACK get() = rotated(+3)
+
+    val BACK get() = rotated(+4)
+    val nextDirections: EnumSet<Direction>
+        get() =
+            if (diagonal) EnumSet.of(LEFT_FRONT, this, RIGHT_FRONT)
+            else EnumSet.of(LEFT, LEFT_FRONT, this, RIGHT_FRONT, RIGHT)
+}
+
+class IntRange2D(val rowRange: IntRange, val colRange: IntRange) : Iterable<Pair<Int, Int>> {
+    val width = colRange.last - colRange.first
+    val height = rowRange.last - rowRange.first
+    val x = colRange.first
+    val y = rowRange.first
+
+    operator fun contains(point: Pair<Int, Int>): Boolean = point.first in colRange && point.second in rowRange
+    override fun iterator() = iterator { for (r in rowRange) for (c in colRange) yield(r to c) }
+}
+
+data class Vec2Int(val x: Int, val y: Int) {
+
+    constructor(pair: Pair<Int, Int>) : this(pair.first, pair.second)
+
+    operator fun unaryMinus(): Vec2Int = Vec2Int(-x, -y)
+    operator fun plus(other: Vec2Int): Vec2Int = Vec2Int(x + other.x, y + other.y)
+    operator fun minus(other: Vec2Int): Vec2Int = Vec2Int(x - other.x, y - other.y)
+    operator fun times(scalar: Int): Vec2Int = Vec2Int(x * scalar, y * scalar)
+    operator fun div(scalar: Int): Vec2Int = Vec2Int(x / scalar, y / scalar)
+    operator fun Int.times(other: Vec2Int): Vec2Int = other * this
+
+    fun norm2(): Int = (x * x + y * y)
+
+    fun encode(): Long = (x.toLong() shl 32) or (y.toLong() and 0xFFFFFFFF)
+
+    companion object {
+        fun decode(encoded: Long) = Vec2Int((encoded ushr 32).toInt(),  (encoded and 0xFFFFFFFF).toInt())
+    }
+
+    fun toPair() = x to y
+    override fun toString(): String = "$x $y"
+}
+
+// This would would normally be implemented on Long, but Longs don't support shifts, which makes them less robust
+// Instead, this one uses Longs to store 64bits of data and truncates bits that are outside of bounds
+data class BitMap2D(val rows: Int, val cols: Int) {
+    // lazy cache for operations - to postpone looping through all perpendicular axes when setting bitset
+    private val data: EnumMap<AXIS, MutableList<Long>> = EnumMap<AXIS, MutableList<Long>>(mapOf(
+        ROWS to MutableList(cols) { 0L },
+        COLS to MutableList(rows) { 0L },
+    ))
+
+    operator fun get(row: Int, col: Int): Boolean = data[ROWS]!![row] and (1L shl col) != 0L
+
+    /**
+     * Returns
+     */
+    operator fun get(axis: AXIS): Sequence<Long> = sequence { for (b in data[axis]!!) yield(b) }
+
+    /**
+     *  For example [ROWS, 2] returns NEW bitset corresponding to 3rd row (0-indexed)
+     */
+    operator fun get(axis: AXIS, idx: Int): Long = data[axis]!![idx]
+
+    fun setBit(number: Long, idx: Int, value: Boolean): Long =
+        (number and (1L shl idx).inv()) or ((if (value) 1L else 0L) shl idx)
+
+    operator fun set(row: Int, col: Int, value: Boolean) {
+        data[ROWS]!![row] = setBit(data[ROWS]!![row], col, value)
+        data[COLS]!![col] = setBit(data[COLS]!![col], row, value)
+    }
+
+    operator fun set(axis: AXIS, idx: Int, value: Long) {
+        data[axis]!![idx] = value
+        for (crossIdx in data[axis.other()]!!.indices)
+            data[axis.other()]!![idx] = setBit(data[axis.other()]!![idx], crossIdx, value and (1L shl crossIdx) != 0L)
+    }
+
+    /**
+     * Returns count of bits set to true
+     */
+    fun cardinality(): Int = data[ROWS]!!.sumBy { it.countOneBits() }
+
+    fun clone(): BitMap2D {
+        val clone = BitMap2D(rows, cols)
+        for ((ix, b) in this[ROWS].withIndex()) clone[ROWS, ix] = b
+        return clone
+    }
+}

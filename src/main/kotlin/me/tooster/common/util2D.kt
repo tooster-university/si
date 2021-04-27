@@ -60,7 +60,7 @@ enum class Direction {
     val delta get() = Vec2Int(deltaX, deltaY)
 }
 
-class IntRange2D(val rowRange: IntRange, val colRange: IntRange) : Iterable<Pair<Int, Int>> {
+class IntRange2D(val rowRange: IntRange, val colRange: IntRange) : Iterable<Vec2Int> {
     val width = colRange.last - colRange.first
     val height = rowRange.last - rowRange.first
     val x = colRange.first
@@ -69,7 +69,7 @@ class IntRange2D(val rowRange: IntRange, val colRange: IntRange) : Iterable<Pair
     constructor(start: Vec2Int, end: Vec2Int) : this(start.x..end.x, start.y..end.y)
 
     operator fun contains(point: Pair<Int, Int>): Boolean = point.first in colRange && point.second in rowRange
-    override fun iterator() = iterator { for (r in rowRange) for (c in colRange) yield(r to c) }
+    override fun iterator() = iterator { for (r in rowRange) for (c in colRange) yield(Vec2Int(r, c)) }
 }
 
 data class Vec2Int(val x: Int, val y: Int) {
@@ -83,6 +83,7 @@ data class Vec2Int(val x: Int, val y: Int) {
     operator fun times(scalar: Int): Vec2Int = Vec2Int(x * scalar, y * scalar)
     operator fun div(scalar: Int): Vec2Int = Vec2Int(x / scalar, y / scalar)
     operator fun Int.times(other: Vec2Int): Vec2Int = other * this
+
     /** Squared euclidean norm */
     fun norm2(): Int = (x * x + y * y)
 
@@ -101,6 +102,7 @@ data class Vec2Int(val x: Int, val y: Int) {
 
     override fun toString(): String = "$x $y"
     operator fun rangeTo(other: Vec2Int) = IntRange2D(this, other)
+    infix fun until(other: Vec2Int) = this..Vec2Int(other.x - 1, other.y - 1)
 
     companion object {
         fun decode(encoded: Long) = Vec2Int((encoded ushr 32).toInt(), (encoded and 0xFFFFFFFF).toInt())

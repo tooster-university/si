@@ -7,11 +7,12 @@ import me.tooster.common.Direction.*
 import me.tooster.w2.CommandoMap.Companion.ALL_MOVES
 import java.io.File
 import java.util.*
+import kotlin.math.sign
 
 
 /** tries to greedily decrease uncertainty */
 fun CommandoMap.State.decreaseUncertaintyGreedy(
-    maxSteps: Int = opts.getOrDefault("maxRandom", "100").toInt(),
+    maxSteps: Int = opts.getOrDefault("maxRandom", "20").toInt(),
     maxUncertainty: Int = opts.getOrDefault("maxGreedyUncertainty", "3").toInt(),
 ): CommandoMap.State {
     var s = this
@@ -58,17 +59,33 @@ fun CommandoMap.State.bfsSolve(maxDepth: Int = opts.getOrDefault("maxDepth", "15
     return this
 }
 
-private fun CommandoMap.State.h1(): Int =
-    positions.reduce {totalDist, pos ->}
+private fun CommandoMap.aStar(aStarDepth: Int = opts.getOrDefault("aStarDepth", "500").toInt())
+        : CommandoMap.State {
 
-private fun CommandoMap.State.aStar(): CommandoMap.State {
-    if(toReach == 0) return this
+    var s = getInitialState()
+    val queue = PriorityQueue<Pair<CommandoMap.State, Double>> { (_, h1), (_, h2) -> sign(h1 - h2).toInt() }
+    val visited = HashSet<Set<Vec2Int>>()
 
-    val distancesToGoals = Vec2Int(0,0)..Vec2Int(cols, rows)
+    queue.add(s to s.h1())
+    visited.add(s.positions)
 
-    val queue = PriorityQueue<CommandoMap.State> { s1, s2 -> s1.h1() - s2.h1() }
-    val visited = HashSet<Int>()
-    queue.add(this)
+    while (queue.isNotEmpty()) {
+        val (current, h) = queue.poll()
+        s = current
+        if (s.path.length == aStarDepth) {
+            debugLog("{r*--A* reached max depth $aStarDepth with uncertainty ${s.uncertainty}, h:$h--}")
+            return s
+        }
+        if (s.toReach == 0) return s
+        for (dir in ALL_MOVES) {
+            val nextState = s.next(dir)
+            if (nextState.positions !in visited) {
+                visited.add(nextState.positions)
+                queue.add(nextState to nextState.h1())
+            }
+        }
+    }
+    return s
 }
 
 @Suppress("DuplicatedCode")
@@ -88,12 +105,15 @@ fun main(args: Array<String>) {
         var s = commandoMap.getInitialState()
 
         if (opts.containsKey("ver2")) {
-            s = s.aStar()
+            s = commandoMap.aStar()
+            debugLog("{r--A* length: ${s.path.length}--}")
+        } else if (opts.containsKey("ver3")) {
+
         } else {
             val movesToCorner = List(commandoMap.cols) { N } + List(commandoMap.rows) { E }
             s = movesToCorner.fold(s) { state, dir -> state.next(dir) } // greedy move to corner
             s = s.decreaseUncertaintyGreedy()
-            debugLog("{b--greedy: ${s.uncertainty} after (${s.path.length})--}\n")
+            debugLog("{b--greedy: ${s.uncertainty} after (${s.path.length})--}")
             s = s.bfsSolve()
             debugLog("{b--BFS: ${s.uncertainty} after (${s.path.length})--}")
         }

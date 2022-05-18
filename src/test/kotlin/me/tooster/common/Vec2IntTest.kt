@@ -23,7 +23,7 @@ internal class Vec2IntTest {
             ).map { it.toVec2Int() }
 
         cases.forEach {
-            assertEquals(it, Vec2Int.decode(it.encode()))
+            assertEquals(it, Vec2Int.decoded(it.encoded()))
         }
     }
 }

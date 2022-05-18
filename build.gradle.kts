@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.4.30"
+    kotlin("jvm") version "1.5.0"
 }
 
 group = "me.tooster"
@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     implementation("org.junit.jupiter:junit-jupiter:5.4.2")
+//    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0")
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")

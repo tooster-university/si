@@ -93,9 +93,9 @@ data class Vec2Int(val x: Int, val y: Int) {
     /** Chebyshev norm */
     fun normMax(): Int = max(x, y)
 
-    fun translate(d: Direction): Vec2Int = this + d.delta
+    fun translated(d: Direction): Vec2Int = this + d.delta
 
-    fun encode(): Long = (x.toLong() shl 32) or (y.toLong() and 0xFFFFFFFF)
+    fun encoded(): Long = (x.toLong() shl 32) or (y.toLong() and 0xFFFFFFFF)
 
     override fun hashCode() = (x shl 16) or (y and 0xFFFF)
     fun toPair() = x to y
@@ -105,7 +105,7 @@ data class Vec2Int(val x: Int, val y: Int) {
     infix fun until(other: Vec2Int) = this..Vec2Int(other.x - 1, other.y - 1)
 
     companion object {
-        fun decode(encoded: Long) = Vec2Int((encoded ushr 32).toInt(), (encoded and 0xFFFFFFFF).toInt())
+        fun decoded(encoded: Long) = Vec2Int((encoded ushr 32).toInt(), (encoded and 0xFFFFFFFF).toInt())
     }
 }
 

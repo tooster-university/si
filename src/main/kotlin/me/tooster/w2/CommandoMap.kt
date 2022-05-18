@@ -1,7 +1,6 @@
 package me.tooster.w2
 
 import me.tooster.common.*
-import java.lang.Integer.max
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -72,7 +71,7 @@ class CommandoMap(val board: List<String>) {
 
         /** returns next state after making a move in specific direction */
         fun next(d: Direction): State = State(positions.map {
-            val translated = it.translate(d)
+            val translated = it.translated(d)
             if (translated in walls) it else translated // make a move or not if next to wall
         }.toSet()).also { it.path = TreePath(d, path) }
 
